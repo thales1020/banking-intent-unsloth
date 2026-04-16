@@ -1,0 +1,10 @@
+checkpoint:
+  model_dir: saved_model
+
+inference:
+  max_seq_length: 512
+  load_in_4bit: true
+  max_new_tokens: 24
+  temperature: 0.0
+  do_sample: false
+  prompt_template: "Tin nhan: {text} - Y dinh:"

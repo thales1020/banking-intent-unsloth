@@ -1,0 +1,12 @@
+unsloth
+torch
+transformers
+trl
+datasets
+pandas
+pyyaml
+accelerate
+bitsandbytes
+peft
+xformers
+sentencepiece

@@ -1,0 +1,38 @@
+model:
+  name: unsloth/Qwen2.5-0.5B-Instruct
+  max_seq_length: 512
+  load_in_4bit: true
+
+lora:
+  r: 16
+  lora_alpha: 16
+  lora_dropout: 0
+  bias: none
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+data:
+  train_csv: sample_data/train.csv
+  text_column: text
+  label_column: label
+  output_text_column: prompt
+  prompt_template: "Tin nhan: {text} - Y dinh: {label}"
+
+training:
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 4
+  learning_rate: 2.0e-4
+  max_steps: 60
+  warmup_steps: 5
+  logging_steps: 5
+  seed: 42
+  output_dir: outputs
+
+save:
+  output_dir: saved_model
