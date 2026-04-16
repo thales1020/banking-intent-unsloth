@@ -107,6 +107,9 @@ def train(config: dict, repo_root: Path):
     dataset = build_prompt_dataset(config, repo_root)
     model, tokenizer = build_model_and_tokenizer(config)
 
+    if tokenizer.pad_token is None and tokenizer.eos_token is not None:
+        tokenizer.pad_token = tokenizer.eos_token
+
     output_dir = repo_root / get_train_value(config, "output_dir")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -128,6 +131,16 @@ def train(config: dict, repo_root: Path):
         sft_config_kwargs["max_seq_length"] = seq_len
     elif "max_length" in sft_config_params:
         sft_config_kwargs["max_length"] = seq_len
+
+    eos_token = tokenizer.eos_token
+    if eos_token is None and tokenizer.eos_token_id is not None:
+        eos_token = tokenizer.convert_ids_to_tokens(tokenizer.eos_token_id)
+    if "eos_token" in sft_config_params and eos_token:
+        sft_config_kwargs["eos_token"] = eos_token
+
+    pad_token = tokenizer.pad_token
+    if "pad_token" in sft_config_params and pad_token:
+        sft_config_kwargs["pad_token"] = pad_token
 
     args = SFTConfig(**sft_config_kwargs)
 
