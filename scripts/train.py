@@ -132,16 +132,6 @@ def train(config: dict, repo_root: Path):
     elif "max_length" in sft_config_params:
         sft_config_kwargs["max_length"] = seq_len
 
-    eos_token = tokenizer.eos_token
-    if eos_token is None and tokenizer.eos_token_id is not None:
-        eos_token = tokenizer.convert_ids_to_tokens(tokenizer.eos_token_id)
-    if "eos_token" in sft_config_params and eos_token:
-        sft_config_kwargs["eos_token"] = eos_token
-
-    pad_token = tokenizer.pad_token
-    if "pad_token" in sft_config_params and pad_token:
-        sft_config_kwargs["pad_token"] = pad_token
-
     args = SFTConfig(**sft_config_kwargs)
 
     sft_trainer_params = inspect.signature(SFTTrainer.__init__).parameters
