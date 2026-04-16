@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 from pathlib import Path
 
 import pandas as pd
@@ -109,24 +110,45 @@ def train(config: dict, repo_root: Path):
     output_dir = repo_root / get_train_value(config, "output_dir")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    trainer = SFTTrainer(
-        model=model,
-        processing_class=tokenizer,
-        train_dataset=dataset,
-        dataset_text_field="formatted_text",
-        args=SFTConfig(
-            max_seq_length=get_train_value(config, "max_seq_length"),
-            per_device_train_batch_size=get_train_value(config, "batch_size"),
-            gradient_accumulation_steps=4,
-            max_steps=get_train_value(config, "max_steps"),
-            learning_rate=get_train_value(config, "learning_rate"),
-            fp16=not torch.cuda.is_bf16_supported(),
-            bf16=torch.cuda.is_bf16_supported(),
-            logging_steps=10,
-            optim="adamw_8bit",
-            output_dir=str(output_dir),
-        ),
-    )
+    seq_len = get_train_value(config, "max_seq_length")
+    sft_config_params = inspect.signature(SFTConfig).parameters
+    sft_config_kwargs = {
+        "per_device_train_batch_size": get_train_value(config, "batch_size"),
+        "gradient_accumulation_steps": 4,
+        "max_steps": get_train_value(config, "max_steps"),
+        "learning_rate": get_train_value(config, "learning_rate"),
+        "fp16": not torch.cuda.is_bf16_supported(),
+        "bf16": torch.cuda.is_bf16_supported(),
+        "logging_steps": 10,
+        "optim": "adamw_8bit",
+        "output_dir": str(output_dir),
+    }
+
+    if "max_seq_length" in sft_config_params:
+        sft_config_kwargs["max_seq_length"] = seq_len
+    elif "max_length" in sft_config_params:
+        sft_config_kwargs["max_length"] = seq_len
+
+    args = SFTConfig(**sft_config_kwargs)
+
+    sft_trainer_params = inspect.signature(SFTTrainer.__init__).parameters
+    trainer_kwargs = {
+        "model": model,
+        "train_dataset": dataset,
+        "args": args,
+    }
+
+    if "processing_class" in sft_trainer_params:
+        trainer_kwargs["processing_class"] = tokenizer
+    elif "tokenizer" in sft_trainer_params:
+        trainer_kwargs["tokenizer"] = tokenizer
+
+    if "dataset_text_field" in sft_trainer_params:
+        trainer_kwargs["dataset_text_field"] = "formatted_text"
+    if "max_seq_length" in sft_trainer_params:
+        trainer_kwargs["max_seq_length"] = seq_len
+
+    trainer = SFTTrainer(**trainer_kwargs)
 
     trainer.train()
 
