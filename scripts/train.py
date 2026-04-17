@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 import torch
+import unsloth
 import yaml
 from datasets import Dataset
 from trl import SFTConfig, SFTTrainer
@@ -133,6 +134,17 @@ def train(config: dict, repo_root: Path):
         sft_config_kwargs["max_length"] = seq_len
 
     args = SFTConfig(**sft_config_kwargs)
+
+    # Some TRL versions default eos_token to a placeholder string like <EOS_TOKEN>.
+    # Override it with tokenizer tokens before creating the trainer.
+    if hasattr(args, "eos_token"):
+        current_eos = getattr(args, "eos_token", None)
+        if (current_eos is None or current_eos == "<EOS_TOKEN>") and tokenizer.eos_token:
+            args.eos_token = tokenizer.eos_token
+    if hasattr(args, "pad_token"):
+        current_pad = getattr(args, "pad_token", None)
+        if (current_pad is None or current_pad == "<PAD_TOKEN>") and tokenizer.pad_token:
+            args.pad_token = tokenizer.pad_token
 
     sft_trainer_params = inspect.signature(SFTTrainer.__init__).parameters
     trainer_kwargs = {
