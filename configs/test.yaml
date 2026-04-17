@@ -8,11 +8,11 @@ model:
 data:
   test_csv: sample_data/test.csv
   text_column: text
-  label_column: label
+  label_column: label_text
 
 test:
   batch_size: 8
-  max_new_tokens: 24
+  max_new_tokens: 8
   temperature: 0.0
   do_sample: false
-  prompt_template: "Tin nhan: {text}\nY dinh:"
+  prompt_template: "Tin nhan: {text} - Y dinh:"

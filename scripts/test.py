@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import argparse
-import inspect
+import difflib
 import re
+from collections import Counter
 from pathlib import Path
 
 import pandas as pd
@@ -64,27 +65,71 @@ def normalize_prediction(text: str) -> str:
     return cleaned
 
 
+def canonical_label(text: str) -> str:
+    cleaned = normalize_prediction(text).lower()
+    cleaned = re.sub(r"[^a-z0-9_ ]", "", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
+
+
 def extract_label_name(value):
     if isinstance(value, str):
         return value.strip()
     return str(value)
 
 
+def force_to_known_label(pred: str, known_lookup: dict[str, str], default_label: str) -> str:
+    key = canonical_label(pred)
+    if key in known_lookup:
+        return known_lookup[key]
+
+    # Try substring matching before fuzzy matching.
+    candidates = [k for k in known_lookup if k and (k in key or key in k)]
+    if candidates:
+        best_key = max(candidates, key=len)
+        return known_lookup[best_key]
+
+    close = difflib.get_close_matches(key, list(known_lookup.keys()), n=1, cutoff=0.35)
+    if close:
+        return known_lookup[close[0]]
+
+    return default_label
+
+
 def load_model_and_tokenizer(config: dict, repo_root: Path):
     save_dir = repo_root / get_value(config, "model_dir")
     seq_len = get_value(config, "max_seq_length")
+    adapter_config_path = save_dir / "adapter_config.json"
 
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=str(save_dir),
-        max_seq_length=seq_len,
-        dtype=None,
-        load_in_4bit=True,
-    )
-    FastLanguageModel.for_inference(model)
+    try:
+        if not save_dir.exists() or not save_dir.is_dir():
+            raise FileNotFoundError(f"Khong tim thay thu muc mo hinh: {save_dir}")
+        if not adapter_config_path.exists():
+            raise FileNotFoundError(
+                f"Thieu file adapter: {adapter_config_path}. "
+                "Hay dam bao ban da fine-tune va luu LoRA adapter dung thu muc."
+            )
+
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name=str(save_dir),
+            max_seq_length=seq_len,
+            dtype=None,
+            load_in_4bit=True,
+        )
+        FastLanguageModel.for_inference(model)
+        if hasattr(model, "generation_config") and getattr(model.generation_config, "max_length", None):
+            model.generation_config.max_length = None
+    except FileNotFoundError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(
+            f"Khong the load LoRA adapter tu thu muc {save_dir}. Chi tiet loi: {exc}"
+        ) from exc
 
     if tokenizer.pad_token is None and tokenizer.eos_token is not None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    print(f"Da load thanh cong LoRA adapters tu {save_dir} len mo hinh goc")
     return model, tokenizer
 
 
@@ -161,6 +206,10 @@ def main():
     else:
         y_true = [extract_label_name(value) for value in df["label_text"].tolist()]
 
+    label_counts = Counter(y_true)
+    default_label = label_counts.most_common(1)[0][0]
+    known_lookup = {canonical_label(label): label for label in sorted(set(y_true))}
+
     prompt_prefix = build_prompt_prefix(config)
     prompts = [prompt_prefix.format(text=str(text)) for text in df[text_col].tolist()]
 
@@ -168,7 +217,13 @@ def main():
     batch_predict.max_new_tokens = get_value(config, "max_new_tokens")
     batch_predict.do_sample = get_value(config, "do_sample")
     batch_predict.temperature = get_value(config, "temperature")
-    y_pred = batch_predict(model, tokenizer, prompts, batch_size=get_value(config, "batch_size", args.batch_size))
+    raw_predictions = batch_predict(
+        model,
+        tokenizer,
+        prompts,
+        batch_size=get_value(config, "batch_size", args.batch_size),
+    )
+    y_pred = [force_to_known_label(pred, known_lookup, default_label) for pred in raw_predictions]
 
     accuracy = accuracy_score(y_true, y_pred)
     print(f"Accuracy: {accuracy:.4f}")

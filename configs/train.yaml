@@ -20,7 +20,7 @@ lora:
 data:
   train_csv: sample_data/train.csv
   text_column: text
-  label_column: label
+  label_column: label_text
   output_text_column: formatted_text
   prompt_template: "Tin nhan: {text} - Y dinh: {label}"
 
