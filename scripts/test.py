@@ -174,8 +174,8 @@ def main():
     parser.add_argument(
         "--test-csv",
         type=str,
-        default="sample_data/test.csv",
-        help="Path to test CSV (default: sample_data/test.csv)",
+        default=None,
+        help="Path to test CSV (default: read from configs/test.yaml)",
     )
     parser.add_argument(
         "--batch-size",
@@ -188,7 +188,8 @@ def main():
     repo_root = Path(__file__).resolve().parents[1]
     config = load_config(repo_root / args.config)
 
-    test_csv = repo_root / args.test_csv
+    test_csv_rel = args.test_csv if args.test_csv else get_value(config, "test_csv", "sample_data/test.csv")
+    test_csv = repo_root / test_csv_rel
     if not test_csv.exists():
         raise FileNotFoundError(f"Test CSV not found: {test_csv}")
 
@@ -223,9 +224,15 @@ def main():
         prompts,
         batch_size=get_value(config, "batch_size", args.batch_size),
     )
+
+    y_true_canonical = [canonical_label(label) for label in y_true]
+    raw_pred_canonical = [canonical_label(pred) for pred in raw_predictions]
+    raw_accuracy = accuracy_score(y_true_canonical, raw_pred_canonical)
+
     y_pred = [force_to_known_label(pred, known_lookup, default_label) for pred in raw_predictions]
 
     accuracy = accuracy_score(y_true, y_pred)
+    print(f"Raw Accuracy (no label forcing): {raw_accuracy:.4f}")
     print(f"Accuracy: {accuracy:.4f}")
     print("\nClassification Report:\n")
     print(classification_report(y_true, y_pred, zero_division=0))
