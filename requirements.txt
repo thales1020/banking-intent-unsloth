@@ -10,3 +10,4 @@ bitsandbytes
 peft
 xformers
 sentencepiece
+scikit-learn
