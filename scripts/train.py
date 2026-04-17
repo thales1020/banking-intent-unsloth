@@ -31,6 +31,7 @@ def get_train_value(config: dict, key: str, default=None):
         "max_seq_length": model_cfg.get("max_seq_length", default),
         "batch_size": training_cfg.get("per_device_train_batch_size", default),
         "max_steps": training_cfg.get("max_steps", default),
+        "num_train_epochs": training_cfg.get("num_train_epochs", default),
         "learning_rate": training_cfg.get("learning_rate", default),
         "output_dir": training_cfg.get("output_dir", save_cfg.get("output_dir", default)),
         "train_csv": data_cfg.get("train_csv", default),
@@ -116,10 +117,11 @@ def train(config: dict, repo_root: Path):
 
     seq_len = get_train_value(config, "max_seq_length")
     sft_config_params = inspect.signature(SFTConfig).parameters
+    max_steps = get_train_value(config, "max_steps")
+    num_train_epochs = get_train_value(config, "num_train_epochs")
     sft_config_kwargs = {
         "per_device_train_batch_size": get_train_value(config, "batch_size"),
         "gradient_accumulation_steps": 4,
-        "max_steps": get_train_value(config, "max_steps"),
         "learning_rate": get_train_value(config, "learning_rate"),
         "fp16": not torch.cuda.is_bf16_supported(),
         "bf16": torch.cuda.is_bf16_supported(),
@@ -127,6 +129,11 @@ def train(config: dict, repo_root: Path):
         "optim": "adamw_8bit",
         "output_dir": str(output_dir),
     }
+
+    if max_steps is not None:
+        sft_config_kwargs["max_steps"] = max_steps
+    elif num_train_epochs is not None:
+        sft_config_kwargs["num_train_epochs"] = num_train_epochs
 
     if "max_seq_length" in sft_config_params:
         sft_config_kwargs["max_seq_length"] = seq_len

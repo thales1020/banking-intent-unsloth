@@ -26,7 +26,7 @@ data:
 
 max_seq_length: 512
 batch_size: 2
-max_steps: 60
+num_train_epochs: 3
 learning_rate: 2.0e-4
 output_dir: outputs
 seed: 42
