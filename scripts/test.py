@@ -22,6 +22,8 @@ def get_value(config: dict, key: str, default=None):
     if key in config:
         return config[key]
 
+    checkpoint_cfg = config.get("checkpoint", {})
+    test_cfg = config.get("test", {})
     training_cfg = config.get("training", {})
     data_cfg = config.get("data", {})
     model_cfg = config.get("model", {})
@@ -29,17 +31,23 @@ def get_value(config: dict, key: str, default=None):
 
     fallback_map = {
         "max_seq_length": model_cfg.get("max_seq_length", default),
+        "model_dir": checkpoint_cfg.get("model_dir", save_cfg.get("output_dir", "saved_model")),
         "test_csv": data_cfg.get("test_csv", "sample_data/test.csv"),
         "text_column": data_cfg.get("text_column", "text"),
         "label_column": data_cfg.get("label_column", "label"),
         "output_dir": save_cfg.get("output_dir", "saved_model"),
         "prompt_template": data_cfg.get("prompt_template", default),
+        "batch_size": test_cfg.get("batch_size", 8),
+        "max_new_tokens": test_cfg.get("max_new_tokens", 24),
+        "temperature": test_cfg.get("temperature", 0.0),
+        "do_sample": test_cfg.get("do_sample", False),
+        "prompt_prefix": test_cfg.get("prompt_template", default),
     }
     return fallback_map.get(key, default)
 
 
 def build_prompt_prefix(config: dict) -> str:
-    template = get_value(config, "prompt_template")
+    template = get_value(config, "prompt_prefix") or get_value(config, "prompt_template")
     if template and "{label}" in template:
         prefix = template.replace("{label}", "")
         return prefix.rstrip()
@@ -63,7 +71,7 @@ def extract_label_name(value):
 
 
 def load_model_and_tokenizer(config: dict, repo_root: Path):
-    save_dir = repo_root / get_value(config, "output_dir")
+    save_dir = repo_root / get_value(config, "model_dir")
     seq_len = get_value(config, "max_seq_length")
 
     model, tokenizer = FastLanguageModel.from_pretrained(
@@ -92,9 +100,9 @@ def batch_predict(model, tokenizer, texts: list[str], batch_size: int = 8) -> li
         with torch.no_grad():
             generated = model.generate(
                 **inputs,
-                max_new_tokens=24,
-                do_sample=False,
-                temperature=0.0,
+                max_new_tokens=batch_predict.max_new_tokens,
+                do_sample=batch_predict.do_sample,
+                temperature=batch_predict.temperature,
                 pad_token_id=tokenizer.pad_token_id,
                 eos_token_id=tokenizer.eos_token_id,
             )
@@ -115,8 +123,8 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/train.yaml",
-        help="Path to config YAML (default: configs/train.yaml)",
+        default="configs/test.yaml",
+        help="Path to config YAML (default: configs/test.yaml)",
     )
     parser.add_argument(
         "--test-csv",
@@ -157,7 +165,10 @@ def main():
     prompts = [prompt_prefix.format(text=str(text)) for text in df[text_col].tolist()]
 
     model, tokenizer = load_model_and_tokenizer(config, repo_root)
-    y_pred = batch_predict(model, tokenizer, prompts, batch_size=args.batch_size)
+    batch_predict.max_new_tokens = get_value(config, "max_new_tokens")
+    batch_predict.do_sample = get_value(config, "do_sample")
+    batch_predict.temperature = get_value(config, "temperature")
+    y_pred = batch_predict(model, tokenizer, prompts, batch_size=get_value(config, "batch_size", args.batch_size))
 
     accuracy = accuracy_score(y_true, y_pred)
     print(f"Accuracy: {accuracy:.4f}")
