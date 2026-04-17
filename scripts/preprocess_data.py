@@ -13,8 +13,8 @@ def build_balanced_subset(sample_fraction: float, seed: int):
     The subset size is approximately sample_fraction of the full dataset,
     while keeping the same number of examples for every label.
     """
-    if not 0.10 <= sample_fraction <= 0.20:
-        raise ValueError("sample_fraction must be between 0.10 and 0.20")
+    if not 0.10 <= sample_fraction <= 1.00:
+        raise ValueError("sample_fraction must be between 0.10 and 1.00")
 
     dataset_dict = load_dataset("banking77")
     full_dataset = concatenate_datasets([dataset_dict["train"], dataset_dict["test"]])
@@ -73,8 +73,8 @@ def parse_args():
     parser.add_argument(
         "--sample-fraction",
         type=float,
-        default=0.15,
-        help="Fraction in [0.10, 0.20] for balanced subset extraction (default: 0.15).",
+        default=1.0,
+        help="Fraction in [0.10, 1.00] for balanced subset extraction (default: 1.00).",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42).")
     return parser.parse_args()
