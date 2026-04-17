@@ -18,13 +18,31 @@ class IntentClassification:
         model_dir = repo_root / self.config["checkpoint"]["model_dir"]
         infer_cfg = self.config["inference"]
 
-        self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-            model_name=str(model_dir),
-            max_seq_length=infer_cfg["max_seq_length"],
-            dtype=None,
-            load_in_4bit=infer_cfg["load_in_4bit"],
-        )
-        FastLanguageModel.for_inference(self.model)
+        adapter_config_path = model_dir / "adapter_config.json"
+        try:
+            if not model_dir.exists() or not model_dir.is_dir():
+                raise FileNotFoundError(f"Khong tim thay thu muc mo hinh: {model_dir}")
+            if not adapter_config_path.exists():
+                raise FileNotFoundError(
+                    f"Thieu file adapter: {adapter_config_path}. "
+                    "Hay dam bao ban da fine-tune va luu LoRA adapter dung thu muc."
+                )
+
+            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+                model_name=str(model_dir),
+                max_seq_length=infer_cfg["max_seq_length"],
+                dtype=None,
+                load_in_4bit=True,
+            )
+            FastLanguageModel.for_inference(self.model)
+        except FileNotFoundError:
+            raise
+        except Exception as exc:
+            raise RuntimeError(
+                f"Khong the load LoRA adapter tu thu muc {model_dir}. Chi tiet loi: {exc}"
+            ) from exc
+
+        print(f"Da load thanh cong LoRA adapters tu {model_dir} len mo hinh goc")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     def __call__(self, text: str) -> str:
