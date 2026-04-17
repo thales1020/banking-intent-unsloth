@@ -20,9 +20,9 @@ lora:
 data:
   train_csv: sample_data/train.csv
   text_column: text
-  label_column: label_text
+  label_column: label
   output_text_column: formatted_text
-  prompt_template: "Tin nhan: {text} - Y dinh: {label}"
+  prompt_template: "### Huong dan: Phan loai tin nhan ngan hang sau vao mot ma y dinh duy nhat tu 0 den 76. Khong tra loi gi them ngoai con so.\n### Tin nhan: {text}\n### Ma y dinh: {label}"
 
 max_seq_length: 512
 batch_size: 2
