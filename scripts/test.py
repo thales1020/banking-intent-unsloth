@@ -58,11 +58,11 @@ def build_prompt_prefix(config: dict) -> str:
 
 
 def normalize_prediction(text: str) -> str:
-    cleaned = text.strip()
-    cleaned = cleaned.split("\n", 1)[0].strip()
-    cleaned = cleaned.strip(" -:\t").strip()
-    cleaned = re.sub(r"\s+", " ", cleaned)
-    return cleaned
+    # Tìm tất cả các cụm số trong văn bản trả về
+    match = re.search(r'\d+', text)
+    if match:
+        return match.group() # Trả về con số đầu tiên tìm thấy (ví dụ: "16")
+    return text.strip()
 
 
 def canonical_label(text: str) -> str:
