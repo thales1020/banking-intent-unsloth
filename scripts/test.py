@@ -61,7 +61,7 @@ def normalize_prediction(text: str) -> str:
     # Tìm tất cả các cụm số trong văn bản trả về
     match = re.search(r'\d+', text)
     if match:
-        return match.group() # Trả về con số đầu tiên tìm thấy (ví dụ: "16")
+        return match.group() 
     return text.strip()
 
 
