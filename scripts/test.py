@@ -58,11 +58,15 @@ def build_prompt_prefix(config: dict) -> str:
 
 
 def normalize_prediction(text: str) -> str:
-    # Tìm tất cả các cụm số trong văn bản trả về
+    # Tìm cụm số liền kề đầu tiên trong chuỗi
     match = re.search(r'\d+', text)
     if match:
-        return match.group() 
-    return text.strip()
+        # Ép sang int rồi quay lại str để loại bỏ số 0 ở đầu (ví dụ: "01" -> "1")
+        # Điều này giúp khớp chính xác tuyệt đối với định dạng nhãn chuẩn từ 0 đến 76
+        return str(int(match.group()))
+    
+    # Trả về nhãn lỗi nếu không sinh ra bất kỳ con số nào
+    return "-1"
 
 
 def canonical_label(text: str) -> str:
