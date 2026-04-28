@@ -90,3 +90,47 @@ Script se tao doi tuong `IntentClassification`, truyen vao mot cau tin nhan ngan
 - inference.temperature: `0.0`
 - inference.do_sample: `false`
 - inference.prompt_template: `Tin nhan: {text} - Y dinh:`
+
+## 5) Demo Inference (CLI)
+
+File `scripts/inference.py` bây giờ hỗ trợ chạy demo qua CLI theo nhiều chế độ:
+
+- Single text (truyền 1 câu):
+
+```bash
+python scripts/inference.py --text "Toi muon khoa the ngay vi nghi bi lo thong tin."
+```
+
+- Single text với ground-truth (tùy chọn `--label`):
+
+```bash
+python scripts/inference.py --text "Toi muon khoa the ngay vi nghi bi lo thong tin." --label 5
+```
+
+- Interactive mode (gõ nhiều câu, hỗ trợ nhập kèm ground-truth bằng dấu tab):
+
+```bash
+python scripts/inference.py --interactive
+# Trong interactive: nhập dạng: <text>\t<label>  hoặc chỉ <text>
+```
+
+- Pipe từ `stdin` (hỗ trợ mỗi dòng là `text` hoặc `text<TAB>label`):
+
+Linux / macOS / WSL:
+
+```bash
+printf "Toi muon khoa the ngay vi nghi bi lo thong tin.\n" | python scripts/inference.py
+printf "Toi muon khoa the ngay vi nghi bi lo thong tin.\t5\n" | python scripts/inference.py
+```
+
+PowerShell (Windows):
+
+```powershell
+"Toi muon khoa the ngay vi nghi bi lo thong tin." | python scripts/inference.py
+"Toi muon khoa the ngay vi nghi bi lo thong tin.`t5" | python scripts/inference.py
+```
+
+Lưu ý:
+- Phải có thư mục `saved_model/` chứa LoRA adapter và tokenizer trước khi chạy.
+- `--config` cho phép truyền file YAML khác nếu cần: `--config configs/inference.yaml`.
+

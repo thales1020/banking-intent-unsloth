@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import sys
 from pathlib import Path
 
 import torch
@@ -70,9 +72,94 @@ class IntentClassification:
         return intent
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="CLI demo for BANKING77 intent classification.")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="configs/inference.yaml",
+        help="Path to inference config YAML (default: configs/inference.yaml)",
+    )
+    parser.add_argument(
+        "--text",
+        type=str,
+        default=None,
+        help="Single message to classify.",
+    )
+    parser.add_argument(
+        "--label",
+        type=str,
+        default=None,
+        help="Optional ground-truth label for the single --text input.",
+    )
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Start interactive CLI mode.",
+    )
+    return parser.parse_args()
+
+
+def run_interactive(classifier: IntentClassification) -> None:
+    print("Interactive mode. Type 'exit' to quit.")
+    while True:
+        try:
+            text = input("Nhap tin nhan> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nExit interactive mode.")
+            break
+
+        if not text:
+            continue
+        if text.lower() in {"exit", "quit", "q"}:
+            print("Exit interactive mode.")
+            break
+
+        # Support entering ground truth alongside text using a tab separator: "text<TAB>label"
+        gt = None
+        if "\t" in text:
+            text, gt = text.split("\t", 1)
+            text = text.strip()
+            gt = gt.strip()
+
+        predicted_intent = classifier(text)
+        print(f"Predicted intent: {predicted_intent}")
+        if gt:
+            print(f"Ground truth: {gt}")
+
+
+def run_from_stdin(classifier: IntentClassification) -> None:
+    lines = [line.strip() for line in sys.stdin if line.strip()]
+    if not lines:
+        raise ValueError("No input found in stdin.")
+
+    for text in lines:
+        gt = None
+        if "\t" in text:
+            text, gt = text.split("\t", 1)
+            text = text.strip()
+            gt = gt.strip()
+
+        predicted_intent = classifier(text)
+        print(f"Input: {text}")
+        print(f"Predicted intent: {predicted_intent}")
+        if gt:
+            print(f"Ground truth: {gt}")
+
+
 if __name__ == "__main__":
-    classifier = IntentClassification(config_path="configs/inference.yaml")
-    sample_message = "Toi muon khoa the ngay vi nghi bi lo thong tin."
-    predicted_intent = classifier(sample_message)
-    print(f"Message: {sample_message}")
-    print(f"Predicted intent: {predicted_intent}")
+    args = parse_args()
+    classifier = IntentClassification(config_path=args.config)
+
+    if args.text:
+        predicted_intent = classifier(args.text)
+        print(f"Input: {args.text}")
+        print(f"Predicted intent: {predicted_intent}")
+        if args.label:
+            print(f"Ground truth: {args.label}")
+    elif args.interactive:
+        run_interactive(classifier)
+    elif not sys.stdin.isatty():
+        run_from_stdin(classifier)
+    else:
+        run_interactive(classifier)
