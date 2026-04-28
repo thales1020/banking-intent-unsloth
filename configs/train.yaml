@@ -22,7 +22,7 @@ data:
   text_column: text
   label_column: label
   output_text_column: formatted_text
-  prompt_template: "### Huong dan: Phan loai tin nhan ngan hang sau vao mot ma y dinh duy nhat tu 0 den 76. Khong tra loi gi them ngoai con so.\n### Tin nhan: {text}\n### Ma y dinh: {label}"
+  prompt_template: "### Instructions: Classify the banking message into one unique intent code from 0 to 76. Do not output anything else.\n### Message: {text}\n### Intent Code: {label}"
 
 max_seq_length: 512
 batch_size: 2
