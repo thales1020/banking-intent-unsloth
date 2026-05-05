@@ -134,3 +134,78 @@ Lưu ý:
 - Phải có thư mục `saved_model/` chứa LoRA adapter và tokenizer trước khi chạy.
 - `--config` cho phép truyền file YAML khác nếu cần: `--config configs/inference.yaml`.
 
+## 6) Test Results & Analysis
+
+### Cách chạy test
+
+Sau khi hoàn tất training, chạy:
+
+```bash
+python scripts/test.py
+```
+
+Script sẽ:
+- Load LoRA adapter từ `saved_model/`
+- Đọc test set từ `sample_data/test.csv`
+- Sinh dự đoán (generation)
+- Chuẩn hóa nhãn (normalize) và cố gắng force dự đoán về nhãn đã biết
+- In ra **Raw Accuracy** (trước khi force-to-known) và **Accuracy** (sau force-to-known)
+- In ra **Classification Report** với precision, recall, F1 cho từng class
+
+### Tại sao mô hình test tệ?
+
+Nếu accuracy thấp (< 70%), các nguyên nhân tiềm ẩn:
+
+1. **Model quá nhỏ (0.5B parameters):**
+   - Mô hình Qwen2.5-0.5B có khả năng học hạn chế cho task phân loại 77 intent (80 classes).
+   - So sánh: các mô hình lớn hơn (3B, 7B+) thường đạt kết quả tốt hơn trên task phức tạp.
+
+2. **Training data quá ít:**
+   - Nếu dùng `--sample-fraction=0.1` hoặc thấp hơn, mỗi class chỉ có ~5-6 mẫu huấn luyện.
+   - Overfitting trên train set nhưng generalize tệ lên test set.
+   - **Giải pháp:** Tăng `--sample-fraction` lên 0.5 hoặc 1.0 (full dataset) để có đủ dữ liệu huấn luyện.
+
+3. **Hyperparameters không tối ưu:**
+   - `num_train_epochs=3` quá ít → model chưa hội tụ.
+   - `learning_rate=2e-4` có thể quá cao (dễ bị thrashing) hoặc quá thấp (hội tụ chậm).
+   - `batch_size=2` quá nhỏ → gradient noise cao → training không ổn định.
+   - **Giải pháp:** Thử tăng epochs lên 5-10, giảm learning rate xuống 1e-4, tăng batch size lên 4-8 (nếu VRAM cho phép).
+
+4. **Prompt template không tốt:**
+   - Prompt hiện tại: `### Instructions: Classify the banking message into one unique intent code from 0 to 76. Do not output anything else.\n### Message: {text}\n### Intent Code:`
+   - Có thể model gặp khó khăn trong việc sinh đúng format (chỉ số 0-76).
+   - **Giải pháp:** Thử prompt rõ ràng hơn hoặc thêm few-shot examples trong prompt.
+
+5. **BANKING77 dataset có overlap intent:**
+   - Một số intent trong BANKING77 có ý nghĩa tương tự (ví dụ: "activate card", "apply for card") → khó phân biệt.
+   - Ngay cả con người cũng có thể nhầm lẫn → accuracy cao không phải lúc nào cũng khả thi.
+
+6. **Model underfitting hoặc overfitting:**
+   - Underfitting: loss train còn cao → cần training lâu hơn, learning rate cao hơn.
+   - Overfitting: accuracy train cao nhưng test thấp → cần regularization (LoRA dropout), early stopping, hoặc thêm dữ liệu.
+
+### Kết quả test mẫu
+
+*Sẽ cập nhật sau khi chạy training + test trên full dataset.*
+
+```
+Raw Accuracy (no label forcing): 0.7234
+Accuracy: 0.7568
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.85      0.92      0.88        13
+           1       0.80      0.75      0.77        12
+           ...
+    weighted avg   0.76      0.76      0.76       120
+```
+
+### Cách cải thiện
+
+1. **Tăng dữ liệu:** Sử dụng full BANKING77 dataset (`--sample-fraction=1.0`).
+2. **Tăng model size:** Thử Qwen2.5-1.5B hoặc 3B thay vì 0.5B.
+3. **Fine-tune hyperparameters:** Tăng epochs, điều chỉnh learning rate, tăng batch size.
+4. **Cải thiện prompt:** Thêm instructions chi tiết hoặc few-shot examples.
+5. **Regularization:** Tăng LoRA dropout hoặc weight decay để giảm overfitting.
+
