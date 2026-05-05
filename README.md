@@ -1,14 +1,22 @@
 # BANKING77 Intent Classification with Unsloth QLoRA
 
-Du an nay huan luyen mo hinh nhe `unsloth/Qwen2.5-0.5B-Instruct` cho bai toan phan loai y dinh tren BANKING77 bang QLoRA, sau do suy luan nhan y dinh tu cau nhap vao.
+Dự án này huấn luyện mô hình nhẹ `unsloth/Qwen2.5-0.5B-Instruct` cho bài toán phân loại ý định trên BANKING77 bằng QLoRA, sau đó suy luận nhãn ý định từ câu nhập vào.
 
-## 1) Cai dat moi truong
+---
 
-### Yeu cau
-- Python 3.10+ (khuyen nghi 3.10 hoac 3.11)
-- GPU CUDA de train nhanh hon (co the chay CPU nhung rat cham)
+## 📹 Demo Video
 
-### Cai dat
+Xem demo inference CLI tại đây: [Demo Video](https://drive.google.com/file/d/1jY4bNg2nc4BckNNzjUJk33nTK1u8_6B5/view?usp=sharing)
+
+---
+
+## 1) Cài đặt môi trường
+
+### Yêu cầu
+- Python 3.10+ (khuyên nghị 3.10 hoặc 3.11)
+- GPU CUDA để train nhanh hơn (có thể chạy CPU nhưng rất chậm)
+
+### Cài đặt
 ```bash
 python -m venv .venv
 source .venv/bin/activate
@@ -16,7 +24,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Tren Windows PowerShell:
+Trên Windows PowerShell:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -24,38 +32,38 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## 2) Chay huan luyen
+## 2) Chạy huấn luyện
 
-Lenh truc tiep:
+Lệnh trực tiếp:
 ```bash
 python scripts/train.py --config configs/train.yaml
 ```
 
-Hoac dung script:
+Hoặc dùng script:
 ```bash
 bash train.sh
 ```
 
-Ket qua sau huan luyen:
-- LoRA adapter va tokenizer duoc luu trong thu muc `saved_model/`
+Kết quả sau huấn luyện:
+- LoRA adapter và tokenizer được lưu trong thư mục `saved_model/`
 
-## 3) Chay suy luan
+## 3) Chạy suy luận
 
-Lenh truc tiep:
+Lệnh trực tiếp:
 ```bash
 python scripts/inference.py
 ```
 
-Hoac dung script:
+Hoặc dùng script:
 ```bash
 bash inference.sh
 ```
 
-Script se tao doi tuong `IntentClassification`, truyen vao mot cau tin nhan ngan hang gia dinh va in ra nhan y dinh du doan.
+Script sẽ tạo đối tượng `IntentClassification`, truyền vào một câu tin nhắn ngân hàng giả định và in ra nhãn ý định dự đoán.
 
-## 4) Danh sach sieu tham so da su dung
+## 4) Danh sách siêu tham số đã sử dụng
 
-### Mo hinh va QLoRA (configs/train.yaml)
+### Mô hình và QLoRA (configs/train.yaml)
 - model.name: `unsloth/Qwen2.5-0.5B-Instruct`
 - model.max_seq_length: `512`
 - model.load_in_4bit: `true`
@@ -65,14 +73,14 @@ Script se tao doi tuong `IntentClassification`, truyen vao mot cau tin nhan ngan
 - lora.bias: `none`
 - lora.target_modules: `q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj`
 
-### Du lieu train
+### Dữ liệu train
 - data.train_csv: `sample_data/train.csv`
 - data.text_column: `text`
-- data.label_column: `label` (fallback `label_text` neu can)
+- data.label_column: `label` (fallback `label_text` nếu cần)
 - data.output_text_column: `prompt`
-- data.prompt_template: `Tin nhan: {text} - Y dinh: {label}`
+- data.prompt_template: `Tin nhắn: {text} - Ý định: {label}`
 
-### Huan luyen voi SFTTrainer
+### Huấn luyện với SFTTrainer
 - per_device_train_batch_size: `2`
 - gradient_accumulation_steps: `4`
 - learning_rate: `2e-4`
@@ -82,14 +90,14 @@ Script se tao doi tuong `IntentClassification`, truyen vao mot cau tin nhan ngan
 - seed: `42`
 - optimizer: `adamw_8bit`
 
-### Cau hinh suy luan (configs/inference.yaml)
+### Cấu hình suy luận (configs/inference.yaml)
 - checkpoint.model_dir: `saved_model`
 - inference.max_seq_length: `512`
 - inference.load_in_4bit: `true`
 - inference.max_new_tokens: `24`
 - inference.temperature: `0.0`
 - inference.do_sample: `false`
-- inference.prompt_template: `Tin nhan: {text} - Y dinh:`
+- inference.prompt_template: `Tin nhắn: {text} - Ý định:`
 
 ## 5) Demo Inference (CLI)
 
@@ -98,13 +106,13 @@ File `scripts/inference.py` bây giờ hỗ trợ chạy demo qua CLI theo nhi�
 - Single text (truyền 1 câu):
 
 ```bash
-python scripts/inference.py --text "Toi muon khoa the ngay vi nghi bi lo thong tin."
+python scripts/inference.py --text "Tôi muốn khóa thẻ ngay vì nghĩ bị lộ thông tin."
 ```
 
 - Single text với ground-truth (tùy chọn `--label`):
 
 ```bash
-python scripts/inference.py --text "Toi muon khoa the ngay vi nghi bi lo thong tin." --label 5
+python scripts/inference.py --text "Tôi muốn khóa thẻ ngay vì nghĩ bị lộ thông tin." --label 5
 ```
 
 - Interactive mode (gõ nhiều câu, hỗ trợ nhập kèm ground-truth bằng dấu tab):
@@ -119,15 +127,15 @@ python scripts/inference.py --interactive
 Linux / macOS / WSL:
 
 ```bash
-printf "Toi muon khoa the ngay vi nghi bi lo thong tin.\n" | python scripts/inference.py
-printf "Toi muon khoa the ngay vi nghi bi lo thong tin.\t5\n" | python scripts/inference.py
+printf "Tôi muốn khóa thẻ ngay vì nghĩ bị lộ thông tin.\n" | python scripts/inference.py
+printf "Tôi muốn khóa thẻ ngay vì nghĩ bị lộ thông tin.\t5\n" | python scripts/inference.py
 ```
 
 PowerShell (Windows):
 
 ```powershell
-"Toi muon khoa the ngay vi nghi bi lo thong tin." | python scripts/inference.py
-"Toi muon khoa the ngay vi nghi bi lo thong tin.`t5" | python scripts/inference.py
+"Tôi muốn khóa thẻ ngay vì nghĩ bị lộ thông tin." | python scripts/inference.py
+"Tôi muốn khóa thẻ ngay vì nghĩ bị lộ thông tin.`t5" | python scripts/inference.py
 ```
 
 Lưu ý:
